@@ -200,12 +200,6 @@ with st.sidebar:
     if is_connected:
         st.success("Connected", icon="✅")
 
-        # Auto-load all files after fresh OAuth connect
-        if st.session_state.pop("auto_load_pending", False):
-            default = get_default_folder()
-            if default:
-                _load_all_from_folder(default[0])
-
         if st.button("Disconnect", use_container_width=True):
             st.session_state.pop("google_tokens", None)
             st.session_state["loaded_chunks"] = []
@@ -223,16 +217,15 @@ with st.sidebar:
     if is_connected:
         st.markdown("### Browse Documents")
 
-        default = get_default_folder()
-        if default:
-            if st.button("Reload all files from folder", use_container_width=True, type="primary"):
-                st.session_state["loaded_chunks"] = []
-                st.session_state["loaded_file_names"] = []
-                _load_all_from_folder(default[0])
-
         breadcrumbs = st.session_state["folder_breadcrumbs"]
         bc_path = " / ".join(name for _, name in breadcrumbs)
         st.caption(f"📁 {bc_path}")
+
+        current_folder_id = st.session_state["current_folder_id"]
+        if st.button("Load all files from here", use_container_width=True, type="primary"):
+            st.session_state["loaded_chunks"] = []
+            st.session_state["loaded_file_names"] = []
+            _load_all_from_folder(current_folder_id)
 
         # Quick-jump buttons when at root
         if len(breadcrumbs) == 1:
