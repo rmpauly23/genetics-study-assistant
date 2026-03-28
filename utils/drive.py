@@ -207,6 +207,7 @@ def handle_oauth_callback() -> bool:
         tokens = exchange_code_for_tokens(code)
         if tokens:
             st.session_state["google_tokens"] = tokens
+            st.session_state["oauth_debug"] = "Token exchange succeeded"
             st.query_params.clear()
             # Jump to default folder if configured
             default = get_default_folder()
@@ -216,6 +217,6 @@ def handle_oauth_callback() -> bool:
                 st.session_state["current_folder_id"] = folder_id
             return True
         else:
-            st.error("Failed to exchange Google authorization code. Please try connecting again.")
+            st.session_state["oauth_debug"] = f"Token exchange FAILED — redirect_uri used: {get_redirect_uri()}"
             st.query_params.clear()
     return False

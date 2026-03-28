@@ -184,6 +184,8 @@ with st.sidebar:
 
     # ── Google Drive auth status ──────────────────────────────────────────
     st.markdown("### Google Drive")
+    if "oauth_debug" in st.session_state:
+        st.caption(f"Debug: {st.session_state['oauth_debug']}")
 
     if is_connected:
         st.success("Connected", icon="✅")
