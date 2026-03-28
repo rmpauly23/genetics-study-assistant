@@ -24,6 +24,7 @@ from utils.drive import (
     handle_oauth_callback,
     get_access_token,
     get_default_folder,
+    list_all_files_recursive,
     list_drive_items,
     fetch_pdf_content,
     fetch_gdoc_content,
@@ -120,6 +121,17 @@ _init_session()
 # Helper: load documents from Drive into session state
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _load_all_from_folder(folder_id: str):
+    """Recursively fetch and chunk all files from a folder."""
+    with st.spinner("Scanning folder and loading all documents..."):
+        files = list_all_files_recursive(folder_id)
+    if not files:
+        st.info("No supported files found in that folder.")
+        return
+    selected = [(f["id"], f["name"], f["mimeType"]) for f in files]
+    _load_documents(selected)
+
+
 def _load_documents(selected_ids: list[tuple[str, str, str]]):
     """Fetch and chunk documents from Drive, adding to session state."""
     if not selected_ids:
@@ -184,11 +196,16 @@ with st.sidebar:
 
     # ── Google Drive auth status ──────────────────────────────────────────
     st.markdown("### Google Drive")
-    if "oauth_debug" in st.session_state:
-        st.caption(f"Debug: {st.session_state['oauth_debug']}")
 
     if is_connected:
         st.success("Connected", icon="✅")
+
+        # Auto-load all files after fresh OAuth connect
+        if st.session_state.pop("auto_load_pending", False):
+            default = get_default_folder()
+            if default:
+                _load_all_from_folder(default[0])
+
         if st.button("Disconnect", use_container_width=True):
             st.session_state.pop("google_tokens", None)
             st.session_state["loaded_chunks"] = []
@@ -205,6 +222,13 @@ with st.sidebar:
     # ── File / folder browser ─────────────────────────────────────────────
     if is_connected:
         st.markdown("### Browse Documents")
+
+        default = get_default_folder()
+        if default:
+            if st.button("Reload all files from folder", use_container_width=True, type="primary"):
+                st.session_state["loaded_chunks"] = []
+                st.session_state["loaded_file_names"] = []
+                _load_all_from_folder(default[0])
 
         breadcrumbs = st.session_state["folder_breadcrumbs"]
         bc_path = " / ".join(name for _, name in breadcrumbs)

@@ -142,6 +142,60 @@ def list_drive_items(folder_id: str = "root", page_token: str = None) -> dict:
     }
 
 
+def list_all_files_recursive(folder_id: str) -> list[dict]:
+    """
+    Recursively list all PDFs and Google Docs under a folder, including subfolders.
+    Returns a flat list of file metadata dicts.
+    """
+    access_token = get_access_token()
+    if not access_token:
+        return []
+
+    all_files = []
+    folders_to_visit = [folder_id]
+
+    while folders_to_visit:
+        current = folders_to_visit.pop()
+        page_token = None
+
+        while True:
+            query = f"'{current}' in parents and trashed=false"
+            params = {
+                "q": query,
+                "fields": "nextPageToken,files(id,name,mimeType)",
+                "pageSize": 100,
+                "includeItemsFromAllDrives": "true",
+                "supportsAllDrives": "true",
+            }
+            if page_token:
+                params["pageToken"] = page_token
+
+            resp = requests.get(
+                f"{GOOGLE_DRIVE_API}/files",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params=params,
+                timeout=30,
+            )
+            if resp.status_code != 200:
+                break
+
+            data = resp.json()
+            for item in data.get("files", []):
+                if item["mimeType"] == "application/vnd.google-apps.folder":
+                    folders_to_visit.append(item["id"])
+                elif item["mimeType"] in (
+                    "application/pdf",
+                    "application/vnd.google-apps.document",
+                ):
+                    all_files.append(item)
+
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+
+    return all_files
+
+
 def fetch_pdf_content(file_id: str) -> bytes:
     """Download a PDF file from Drive as bytes."""
     access_token = get_access_token()
@@ -195,7 +249,6 @@ def handle_oauth_callback() -> bool:
     Returns True if tokens were successfully obtained.
     """
     params = st.query_params
-    st.session_state["oauth_debug"] = f"params seen: {dict(params)}"
     code = params.get("code")
     error = params.get("error")
 
@@ -208,14 +261,14 @@ def handle_oauth_callback() -> bool:
         tokens = exchange_code_for_tokens(code)
         if tokens:
             st.session_state["google_tokens"] = tokens
-            st.session_state["oauth_debug"] = "Token exchange succeeded"
             st.query_params.clear()
-            # Jump to default folder if configured
+            # Jump to default folder and flag auto-load if configured
             default = get_default_folder()
             if default:
                 folder_id, folder_name = default
                 st.session_state["folder_breadcrumbs"] = [(folder_id, folder_name)]
                 st.session_state["current_folder_id"] = folder_id
+                st.session_state["auto_load_pending"] = True
             return True
         else:
             st.session_state["oauth_debug"] = f"Token exchange FAILED — redirect_uri used: {get_redirect_uri()}"
