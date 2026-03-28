@@ -195,17 +195,12 @@ with st.sidebar:
     else:
         st.info("Not connected")
         auth_url = build_auth_url()
-        components.html(
-            f"""
-            <button
-                onclick="window.parent.location.href='{auth_url}'"
-                style="width:100%;padding:12px 0;background:#ff4b4b;color:white;
-                       border:none;border-radius:8px;font-size:1rem;cursor:pointer;
-                       font-family:sans-serif;font-weight:600;">
-                Connect Google Drive
-            </button>
-            """,
-            height=52,
+        st.markdown(
+            f'<a href="{auth_url}" target="_self" style="display:block;text-align:center;'
+            'padding:12px;background:#1a73e8;color:white;border-radius:8px;'
+            'text-decoration:none;font-size:1rem;font-weight:600;">'
+            "Connect Google Drive</a>",
+            unsafe_allow_html=True,
         )
 
     st.divider()
