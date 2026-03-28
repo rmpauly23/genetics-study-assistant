@@ -204,7 +204,7 @@ def handle_oauth_callback() -> bool:
         st.query_params.clear()
         return False
 
-    if code and "google_tokens" not in st.session_state:
+    if code and not st.session_state.get("google_tokens"):
         tokens = exchange_code_for_tokens(code)
         if tokens:
             st.session_state["google_tokens"] = tokens
