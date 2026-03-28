@@ -7,6 +7,7 @@ and the Claude claude-sonnet-4-20250514 model.
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ── Page config must be first Streamlit call ──────────────────────────────────
 st.set_page_config(
@@ -156,17 +157,18 @@ def _load_documents(selected_ids: list[tuple[str, str, str]]):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1. Password gate
+# 1. Handle Google OAuth callback FIRST — before password gate so the ?code=
+#    is exchanged even on a fresh session load after OAuth redirect
+# ─────────────────────────────────────────────────────────────────────────────
+handle_oauth_callback()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Password gate
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown(MOBILE_CSS, unsafe_allow_html=True)
 
 if not check_password():
     st.stop()
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. Handle Google OAuth callback
-# ─────────────────────────────────────────────────────────────────────────────
-handle_oauth_callback()
 
 # Evaluate connection state once; used in both sidebar and main area
 is_connected = get_access_token() is not None
@@ -192,7 +194,18 @@ with st.sidebar:
     else:
         st.info("Not connected")
         auth_url = build_auth_url()
-        st.link_button("Connect Google Drive", auth_url, use_container_width=True, type="primary")
+        components.html(
+            f"""
+            <button
+                onclick="window.parent.location.href='{auth_url}'"
+                style="width:100%;padding:12px 0;background:#ff4b4b;color:white;
+                       border:none;border-radius:8px;font-size:1rem;cursor:pointer;
+                       font-family:sans-serif;font-weight:600;">
+                Connect Google Drive
+            </button>
+            """,
+            height=52,
+        )
 
     st.divider()
 
