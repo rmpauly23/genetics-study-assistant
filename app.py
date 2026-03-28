@@ -192,14 +192,7 @@ with st.sidebar:
     else:
         st.info("Not connected")
         auth_url = build_auth_url()
-        st.markdown(
-            f'<a href="{auth_url}" target="_self">'
-            '<button style="width:100%;padding:12px;background:#1a73e8;color:white;'
-            'border:none;border-radius:8px;font-size:1rem;cursor:pointer;">'
-            "Connect Google Drive"
-            "</button></a>",
-            unsafe_allow_html=True,
-        )
+        st.link_button("Connect Google Drive", auth_url, use_container_width=True, type="primary")
 
     st.divider()
 
