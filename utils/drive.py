@@ -94,31 +94,11 @@ def refresh_access_token(refresh_token: str) -> Optional[str]:
 
 
 def get_access_token() -> Optional[str]:
-    """Return a valid access token, refreshing if needed."""
+    """Return the stored access token, or None if not authenticated."""
     tokens = st.session_state.get("google_tokens")
     if not tokens:
         return None
-
-    # Try a lightweight test call; if 401, refresh
-    access_token = tokens.get("access_token")
-    test = requests.get(
-        f"{GOOGLE_DRIVE_API}/about?fields=user",
-        headers={"Authorization": f"Bearer {access_token}"},
-        timeout=10,
-    )
-    if test.status_code == 200:
-        return access_token
-
-    refresh_token = tokens.get("refresh_token")
-    if refresh_token:
-        new_token = refresh_access_token(refresh_token)
-        if new_token:
-            st.session_state["google_tokens"]["access_token"] = new_token
-            return new_token
-
-    # Tokens are invalid — clear them
-    st.session_state.pop("google_tokens", None)
-    return None
+    return tokens.get("access_token")
 
 
 def list_drive_items(folder_id: str = "root", page_token: str = None) -> dict:
@@ -196,6 +176,19 @@ def fetch_gdoc_content(file_id: str) -> str:
     return ""
 
 
+def get_default_folder() -> Optional[tuple[str, str]]:
+    """
+    Return (folder_id, folder_name) if GOOGLE_FOLDER_ID is set in secrets.
+    Returns None if not configured.
+    """
+    try:
+        folder_id = st.secrets["GOOGLE_FOLDER_ID"]
+        folder_name = st.secrets.get("GOOGLE_FOLDER_NAME", "Study Materials")
+        return (folder_id, folder_name)
+    except KeyError:
+        return None
+
+
 def handle_oauth_callback() -> bool:
     """
     Detect an OAuth callback code in query params and exchange it for tokens.
@@ -203,11 +196,26 @@ def handle_oauth_callback() -> bool:
     """
     params = st.query_params
     code = params.get("code")
+    error = params.get("error")
+
+    if error:
+        st.error(f"Google OAuth error: {error}")
+        st.query_params.clear()
+        return False
+
     if code and "google_tokens" not in st.session_state:
         tokens = exchange_code_for_tokens(code)
         if tokens:
             st.session_state["google_tokens"] = tokens
-            # Clear code from URL
             st.query_params.clear()
+            # Jump to default folder if configured
+            default = get_default_folder()
+            if default:
+                folder_id, folder_name = default
+                st.session_state["folder_breadcrumbs"] = [(folder_id, folder_name)]
+                st.session_state["current_folder_id"] = folder_id
             return True
+        else:
+            st.error("Failed to exchange Google authorization code. Please try connecting again.")
+            st.query_params.clear()
     return False
