@@ -195,6 +195,7 @@ def handle_oauth_callback() -> bool:
     Returns True if tokens were successfully obtained.
     """
     params = st.query_params
+    st.session_state["oauth_debug"] = f"params seen: {dict(params)}"
     code = params.get("code")
     error = params.get("error")
 
