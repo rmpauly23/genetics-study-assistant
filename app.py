@@ -195,6 +195,9 @@ with st.sidebar:
     else:
         st.info("Not connected")
         auth_url = build_auth_url()
+        # Temporary debug — shows the redirect URI being sent to Google
+        from utils.drive import get_redirect_uri
+        st.caption(f"Redirect URI: `{get_redirect_uri()}`")
         st.markdown(
             f'<a href="{auth_url}" target="_self" style="display:block;text-align:center;'
             'padding:12px;background:#1a73e8;color:white;border-radius:8px;'
